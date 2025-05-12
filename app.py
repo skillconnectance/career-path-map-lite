@@ -1,33 +1,34 @@
 import streamlit as st
-from utils.onet_loader import load_occupations, load_related, load_knowledge, load_skills
+import pandas as pd
 
-st.set_page_config(page_title="Career Path Map Lite", layout="wide")
+# Load O*NET data
+@st.cache_data
+def load_data():
+    occupation_df = pd.read_csv("data/Occupation Data.csv", sep="\t")
+    related_df = pd.read_csv("data/Related Occupations.csv", sep="\t")
+    knowledge_df = pd.read_csv("data/Knowledge.csv", sep="\t")
+    skills_df = pd.read_csv("data/Skills.csv", sep="\t")
+    return occupation_df, related_df, knowledge_df, skills_df
 
-st.title("🧭 Career Path Map (Lite)")
+occupation_df, related_df, knowledge_df, skills_df = load_data()
 
-occupations_df = load_occupations()
-related_df = load_related()
-knowledge_df = load_knowledge()
-skills_df = load_skills()
+st.title("O*NET Explorer")
+st.write("Explore occupations, their related skills, and knowledge areas.")
 
-job_input = st.text_input("Enter a job title:", "Data Analyst")
+# Let user select an occupation
+occupation = st.selectbox("Select an Occupation:", occupation_df["Title"].unique())
 
-match = occupations_df[occupations_df['Title'].str.contains(job_input, case=False, na=False)]
+# Get Occupation Code
+code = occupation_df[occupation_df["Title"] == occupation]["O*NET-SOC Code"].values[0]
 
-if not match.empty:
-    job_row = match.iloc[0]
-    onet_code = job_row["O*NET-SOC Code"]
-    st.subheader(f"🎯 Career: {job_row['Title']}")
-    st.markdown(f"**O*NET Code:** {onet_code}")
+st.subheader("Related Occupations")
+related = related_df[related_df["O*NET-SOC Code"] == code]
+st.dataframe(related[["Related Occupation"]])
 
-    st.subheader("🔄 Related Careers")
-    related_jobs = related_df[related_df['O*NET-SOC Code'] == onet_code]
-    st.write(related_jobs[['Related O*NET-SOC Code', 'Title']])
+st.subheader("Key Knowledge Areas")
+know = knowledge_df[knowledge_df["O*NET-SOC Code"] == code].sort_values("Importance", ascending=False)
+st.dataframe(know[["Element Name", "Scale", "Importance"]])
 
-    st.subheader("📘 Knowledge Required")
-    st.write(knowledge_df[knowledge_df['O*NET-SOC Code'] == onet_code][['Element Name', 'Scale Name', 'Data Value']])
-
-    st.subheader("💡 Skills Required")
-    st.write(skills_df[skills_df['O*NET-SOC Code'] == onet_code][['Element Name', 'Scale Name', 'Data Value']])
-else:
-    st.warning("No job found. Try a broader title like 'Analyst' or 'Manager'.")
+st.subheader("Key Skills")
+skills = skills_df[skills_df["O*NET-SOC Code"] == code].sort_values("Importance", ascending=False)
+st.dataframe(skills[["Element Name", "Scale", "Importance"]])
