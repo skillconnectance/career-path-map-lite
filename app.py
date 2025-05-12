@@ -1,34 +1,47 @@
 import streamlit as st
 import pandas as pd
 
-# Load O*NET data
+# ---- PAGE CONFIG ----
+st.set_page_config(page_title="O*NET Explorer", layout="wide")
+
+# ---- LOAD DATA ----
 @st.cache_data
 def load_data():
-    occupation_df = pd.read_csv("data/Occupation Data.csv", sep="\t")
-    related_df = pd.read_csv("data/Related Occupations.csv", sep="\t")
-    knowledge_df = pd.read_csv("data/Knowledge.csv", sep="\t")
-    skills_df = pd.read_csv("data/Skills.csv", sep="\t")
+    occupation_df = pd.read_excel("data/Occupation Data.xlsx")
+    related_df = pd.read_excel("data/Related Occupations.xlsx")
+    knowledge_df = pd.read_excel("data/Knowledge.xlsx")
+    skills_df = pd.read_excel("data/Skills.xlsx")
     return occupation_df, related_df, knowledge_df, skills_df
 
 occupation_df, related_df, knowledge_df, skills_df = load_data()
 
-st.title("O*NET Explorer")
-st.write("Explore occupations, their related skills, and knowledge areas.")
+# ---- UI ----
+st.title("🔍 O*NET Skill Explorer")
 
-# Let user select an occupation
-occupation = st.selectbox("Select an Occupation:", occupation_df["Title"].unique())
+# ---- Select an Occupation ----
+selected_title = st.selectbox(
+    "Select an Occupation:",
+    sorted(occupation_df["Title"].unique())
+)
 
-# Get Occupation Code
-code = occupation_df[occupation_df["Title"] == occupation]["O*NET-SOC Code"].values[0]
+# ---- Show Related Info ----
+if selected_title:
+    st.subheader(f"📌 Selected Occupation: {selected_title}")
 
-st.subheader("Related Occupations")
-related = related_df[related_df["O*NET-SOC Code"] == code]
-st.dataframe(related[["Related Occupation"]])
+    # Get the code
+    selected_code = occupation_df[occupation_df["Title"] == selected_title]["O*NET-SOC Code"].values[0]
 
-st.subheader("Key Knowledge Areas")
-know = knowledge_df[knowledge_df["O*NET-SOC Code"] == code].sort_values("Importance", ascending=False)
-st.dataframe(know[["Element Name", "Scale", "Importance"]])
+    # Skills
+    st.markdown("### 🧠 Skills")
+    skill_rows = skills_df[skills_df["O*NET-SOC Code"] == selected_code]
+    st.dataframe(skill_rows[["Element Name", "Scale Name", "Data Value"]])
 
-st.subheader("Key Skills")
-skills = skills_df[skills_df["O*NET-SOC Code"] == code].sort_values("Importance", ascending=False)
-st.dataframe(skills[["Element Name", "Scale", "Importance"]])
+    # Knowledge
+    st.markdown("### 📘 Knowledge Areas")
+    knowledge_rows = knowledge_df[knowledge_df["O*NET-SOC Code"] == selected_code]
+    st.dataframe(knowledge_rows[["Element Name", "Scale Name", "Data Value"]])
+
+    # Related Occupations
+    st.markdown("### 🤝 Related Occupations")
+    related_rows = related_df[related_df["O*NET-SOC Code"] == selected_code]
+    st.dataframe(related_rows[["Related O*NET-SOC Code", "Title", "Relation Type"]])
